@@ -4,6 +4,7 @@
 #include <optional>
 #include <cstdint>
 #include <getopt.h>
+#include <system_error>
 
 #include "../types.h"
 
@@ -12,7 +13,7 @@ void ThrowUsageMessage(const std::string &description) {
     auto retStr = (
                           description.length() ? description + "\n\n" : ""
                   ) + "Usage: dns [-r] [-x] [-6] -s server [-p port] address\n";
-    throw std::runtime_error(retStr);
+    throw std::system_error(errno, std::generic_category(), retStr);
 }
 
 namespace argparser {

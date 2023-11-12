@@ -11,9 +11,9 @@ int main(int argc, const char** argv) {
     DNSConfiguration args{};
     try {
         args = argparser::parseArguments(argc, argv);
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return -1;
+    } catch (const std::system_error &err) {
+        std::cerr << err.what() << std::endl;
+        return err.code().value();
     }
 
     std::cout << "Server: " << args.server << std::endl;
