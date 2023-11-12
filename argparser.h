@@ -5,8 +5,9 @@
 #include <cstdint>
 #include <getopt.h>
 #include <system_error>
+#include <iostream>
 
-#include "../types.h"
+#include "types.h"
 
 
 void ThrowUsageMessage(const std::string &description) {
@@ -25,7 +26,9 @@ namespace argparser {
 
         DNSConfiguration args{};
         int option;
+        int currentIdx = 0;
         while ((option = getopt(argc, (char *const *) (argv), "rx6s:p:")) != -1) {
+            currentIdx += 1;
             switch (option) {
                 case 'r':
                     args.recursionRequested = true;
@@ -44,15 +47,19 @@ namespace argparser {
                     break;
                 case '?':
                 default:
-                    ThrowUsageMessage("unknown option \"" + std::to_string(option) + "\"");
+                    ThrowUsageMessage("unknown option \"" + std::string(argv[currentIdx]) + "\"");
                     break;
             }
         }
 
-        if (optind < argc) {
+        if (args.server.empty()) {
+            ThrowUsageMessage("Server -s parameter must be specified");
+        }
+
+        if (optind == argc - 1) {
             args.address = argv[optind++];
         } else {
-            ThrowUsageMessage("Address parameter is required");
+            ThrowUsageMessage("Too many arguments");
         }
 
         return args;
