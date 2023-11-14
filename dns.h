@@ -11,35 +11,42 @@
 #include "types.h"
 
 
-const uint16_t flagRD = 0x0100; // Recursion Desired flag (1 bit)
-
 // DNS record types
-const uint16_t typeA = 0x0001; // Type A (IPv4 address)
-const uint16_t typeAAAA = 0x001C; // Type AAAA (IPv6 address)
-const uint16_t typePTR = 0x000C; // Type PTR (pointer)
+const uint16_t typeA = 0x0001;
+const uint16_t typeAAAA = 0x001C;
+const uint16_t typePTR = 0x000C;
+const uint16_t typeCNAME = 0x0005;
+
+// flags
+const uint16_t flagAuthoritative = 0x0400;
+const uint16_t flagRecursive = 0x0100;
+const uint16_t flagTrunc = 0x200;
+const uint16_t flagRD = 0x0100;
+const uint16_t packetCompressed = 0xC0;
 
 // DNS record class
-const uint16_t classInternet = 0x0001; // Class IN (Internet)
+const uint16_t classInternet = 0x0001;
 
 const uint16_t DEFAULT_DNS_PORT = 53;
+
 
 std::vector<uint8_t> encodeDNSName(const std::string& domain) {
     std::vector<uint8_t> encodedName;
     size_t lastPos = 0;
     size_t pos = domain.find('.');
     while (pos != std::string::npos) {
-        encodedName.push_back(static_cast<uint8_t>(pos - lastPos)); // label length
+        encodedName.push_back(static_cast<uint8_t>(pos - lastPos));
         for (size_t i = lastPos; i < pos; ++i) {
-            encodedName.push_back(static_cast<uint8_t>(domain[i])); // label characters
+            encodedName.push_back(static_cast<uint8_t>(domain[i]));
         }
         lastPos = pos + 1;
         pos = domain.find('.', lastPos);
     }
-    encodedName.push_back(static_cast<uint8_t>(domain.size() - lastPos)); // last label length
+    encodedName.push_back(static_cast<uint8_t>(domain.size() - lastPos));
     for (size_t i = lastPos; i < domain.size(); ++i) {
-        encodedName.push_back(static_cast<uint8_t>(domain[i])); // last label characters
+        encodedName.push_back(static_cast<uint8_t>(domain[i]));
     }
-    encodedName.push_back(0); // null byte to end the QNAME
+    encodedName.push_back(0);
     return encodedName;
 }
 
@@ -50,9 +57,8 @@ std::string reverseIPv4(const std::string& ip) {
         throw std::system_error(EINVAL, std::system_category(), "Invalid IPv4 address");
     }
 
-    char buffer[INET_ADDRSTRLEN];
-    // Convert the binary IP to a string in reverse order
-    snprintf(buffer, INET_ADDRSTRLEN, "%d.%d.%d.%d.in-addr.arpa",
+    char buffer[sizeof("069.420.420.069" "in-addr.arpa") + 1];
+    snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d.in-addr.arpa",
              (sa.sin_addr.s_addr >> 0) & 0xFF,
              (sa.sin_addr.s_addr >> 8) & 0xFF,
              (sa.sin_addr.s_addr >> 16) & 0xFF,
@@ -62,14 +68,14 @@ std::string reverseIPv4(const std::string& ip) {
 
 std::string reverseIPv6(const std::string& ip) {
     struct sockaddr_in6 sa{};
-    // Validate the IPv6 address
+    // validate
     if (inet_pton(AF_INET6, ip.c_str(), &(sa.sin6_addr)) != 1) {
         throw std::system_error(EINVAL, std::system_category(), "Invalid IPv6 address");
     }
 
     const char* hexadec = "0123456789abcdef";
     std::string result;
-    for (int i = 15; i >= 0; --i) {
+    for (int i = sizeof(hexadec) - 1; i >= 0; --i) {
         uint8_t byte = sa.sin6_addr.s6_addr[i];
         result += hexadec[byte & 0x0F];
         result += '.';
@@ -89,15 +95,13 @@ struct DNSHeader {
     uint16_t arcount;
 };
 
-// Function to parse a domain name from the packet
-std::string parseName(const std::vector<uint8_t>& packet, size_t& offset) {
+std::string parseDomainNameFromPacket(const std::vector<uint8_t>& packet, size_t& offset) {
     std::string name;
     bool jumped = false;
     size_t jump_offset = 0;
 
-    // Handle possible message compression
     while (packet[offset] != 0) {
-        if (packet[offset] >= 0xC0) { // check for compression
+        if (packet[offset] >= packetCompressed) {
             if (!jumped) {
                 jump_offset = offset + 2;
                 jumped = true;
@@ -121,11 +125,11 @@ std::string parseName(const std::vector<uint8_t>& packet, size_t& offset) {
 
 std::string typeToString(uint16_t type) {
     switch (type) {
-        case 1:
+        case typeA:
             return "A";
-        case 28:
+        case typeAAAA:
             return "AAAA";
-        case 5:
+        case typeCNAME:
             return "CNAME";
         default:
             return "UNKNOWN";
@@ -195,14 +199,14 @@ namespace dns {
         offset += sizeof(DNSHeader);
 
         // Print header flags
-        output << "Authoritative: " << ((header.flags & 0x0400) ? "Yes" : "No") << ", ";
-        output << "Recursive: " << ((header.flags & 0x0100) ? "Yes" : "No") << ", ";
-        output << "Truncated: " << ((header.flags & 0x0200) ? "Yes" : "No") << std::endl;
+        output << "Authoritative: " << ((header.flags & flagAuthoritative) ? "Yes" : "No") << ", ";
+        output << "Recursive: " << ((header.flags & flagRecursive) ? "Yes" : "No") << ", ";
+        output << "Truncated: " << ((header.flags & flagTrunc) ? "Yes" : "No") << std::endl;
 
         // Print question section
         output << "Question section (" << header.qdcount << ")" << std::endl;
         for (int i = 0; i < header.qdcount; ++i) {
-            std::string qname = parseName(response, offset);
+            std::string qname = parseDomainNameFromPacket(response, offset);
             uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
             uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
@@ -213,7 +217,7 @@ namespace dns {
         // Parse answer section
         output << "Answer section (" << header.ancount << ")" << std::endl;
         for (int i = 0; i < header.ancount; ++i) {
-            std::string name = parseName(response, offset);
+            std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
             uint16_t _class = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
@@ -233,8 +237,8 @@ namespace dns {
                 char ipv6_str[INET6_ADDRSTRLEN];
                 inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
                 output << ", " << ipv6_str;
-            } else if (type == 5) {
-                std::string cname = parseName(response, offset);
+            } else if (type == typeCNAME) {
+                std::string cname = parseDomainNameFromPacket(response, offset);
                 output << ", " << cname;
             }
 
@@ -244,7 +248,7 @@ namespace dns {
 
         output << "Authority section (" << header.nscount << ")" << std::endl;
         for (int i = 0; i < header.nscount; ++i) {
-            std::string name = parseName(response, offset);
+            std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint16_t _class = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
@@ -255,12 +259,12 @@ namespace dns {
             offset += 2;
 
             output << name << ", " << type << ", " << _class << ", " << ttl << ", [Data]\n";
-            offset += rdlength; // Move past the RDATA
+            offset += rdlength;
         }
 
         output << "Additional section (" << header.arcount << ")" << std::endl;
         for (int i = 0; i < header.arcount; ++i) {
-            std::string name = parseName(response, offset);
+            std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
             uint16_t _class = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
