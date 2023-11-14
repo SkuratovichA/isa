@@ -1,5 +1,5 @@
 CC = g++
-CXXFLAGS = -std=c++2b -Wall
+CXXFLAGS = -std=c++20 -Wall
 LDFLAGS =
 EXEC = dns
 SOURCES = main.cpp
