@@ -17,9 +17,9 @@ void ThrowUsageMessage(const std::string &description) {
         "Usage: dns [-r] [-x] [-6] -s server [-p port] address\n"
         "-r: Recursion Desired\n"
         "-x: Reversed query\n"
-        "-6: AAAA query.\n"
-        "-s: DNS server name or IP adderess.\n"
-        "-p port: port number to send a query. 53 by default.\n"
+        "-6: AAAA query\n"
+        "-s: DNS server name or IP address\n"
+        "-p port: port number to send a query, default is 53\n"
     );
     throw std::system_error(errno, std::generic_category(), retStr);
 }
