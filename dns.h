@@ -241,6 +241,8 @@ namespace dns {
             } else if (type == typeCNAME) {
                 std::string cname = parseDomainNameFromPacket(response, offset);
                 output << ", " << cname;
+            } else {
+                std::cerr << "Unknown type: " << type << std::endl;
             }
 
             output << '\n';

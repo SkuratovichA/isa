@@ -32,6 +32,11 @@ class DNSInvalidArgumentTest(unittest.TestCase):
         self.assertNotEqual(exit_code, 0)
         # self.assertIn("Error:", stderr)
 
+    def test_valid_1(self):
+        command = "./dns -6 -s 8.8.8.8 www.pornhub.com"
+        stdout, stderr, exit_code = self.run_dns_command(command)
+        self.assertEqual(exit_code, 0)
+
 
 if __name__ == '__main__':
     unittest.main()
