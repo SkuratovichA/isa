@@ -28,7 +28,7 @@ int main(int argc, const char** argv) {
 
     // Parse and display the response
     const auto result = dns::parseResponsePacket(response);
-    std::cout << result << std::endl;
+    std::cout << result;
 
     return 0;
 }

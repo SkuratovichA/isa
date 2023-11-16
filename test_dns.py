@@ -1,5 +1,9 @@
 import unittest
 import subprocess
+import socket
+
+
+KAZI_SERVER = 'kazi.fit.vutbr.cz' if socket.gethostname().endswith('fit.vutbr.cz') else '8.8.8.8'
 
 class DNSInvalidArgumentTest(unittest.TestCase):
 
