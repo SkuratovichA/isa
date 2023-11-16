@@ -30,6 +30,14 @@ const uint16_t classInternet = 0x0001;
 
 const uint16_t DEFAULT_DNS_PORT = 53;
 
+// classes
+const uint16_t CLASS_IN = 1;
+const uint16_t CLASS_CS = 2;
+const uint16_t CLASS_CH = 3;
+const uint16_t CLASS_HS = 4;
+const uint16_t CLASS_NONE = 254;
+const uint16_t CLASS_ANY = 255;
+
 
 std::vector<uint8_t> encodeDNSName(const std::string& domain) {
     std::vector<uint8_t> encodedName;
@@ -125,7 +133,26 @@ std::string parseDomainNameFromPacket(const std::vector<uint8_t>& packet, size_t
     return name;
 }
 
-std::string typeToString(uint16_t type) {
+std::string classToString(const uint16_t qclass) {
+    switch (qclass) {
+        case CLASS_IN:
+            return "IN";
+        case CLASS_CS:
+            return "CS";
+        case CLASS_CH:
+            return "CH";
+        case CLASS_HS:
+            return "HS";
+        case CLASS_NONE:
+            return "NONE";
+        case CLASS_ANY:
+            return "ANY";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+std::string typeToString(const uint16_t type) {
     switch (type) {
         case typeA:
             return "A";
@@ -212,9 +239,9 @@ namespace dns {
             std::string qname = parseDomainNameFromPacket(response, offset);
             uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
-            uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            output << qname << ", " << typeToString(qtype) << ", " << ((qclass == 1) ? "IN" : "UNKNOWN") << std::endl;
+            output << qname << ", " << typeToString(qtype) << ", " << classToString(qclass) << std::endl;
         }
 
         // Parse answer section
@@ -223,14 +250,14 @@ namespace dns {
             std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
-            uint16_t _class = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            const uint16_t ansclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t*>(response.data() + offset));
             offset += 4;
             uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
 
-            output << name << ", " << type << ", " << _class << ", " << ttl;
+            output << name << ", " << typeToString(type) << ", " << classToString(ansclass) << ", " << ttl;
 
             if (type == typeA) {
                 in_addr addr{};
@@ -256,14 +283,14 @@ namespace dns {
             std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            uint16_t _class = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            const uint16_t authclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
             uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
 
-            output << name << ", " << type << ", " << _class << ", " << ttl << ", [Data]\n";
+            output << name << ", " << typeToString(type) << ", " << classToString(authclass) << ", " << ttl << ", [Data]\n";
             offset += rdlength;
         }
 
@@ -272,14 +299,14 @@ namespace dns {
             std::string name = parseDomainNameFromPacket(response, offset);
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
-            uint16_t _class = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            const uint16_t addclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t*>(response.data() + offset));
             offset += 4;
             uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
 
-            output << name << ", " << type << ", " << _class << ", " << ttl << ", [Data]\n";
+            output << name << ", " << typeToString(type) << ", " << classToString(addclass) << ", " << ttl << ", [Data]\n";
             offset += rdlength;
         }
 
