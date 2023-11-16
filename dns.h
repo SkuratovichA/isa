@@ -37,7 +37,7 @@ const uint16_t CLASS_NONE = 254;
 const uint16_t CLASS_ANY = 255;
 
 
-std::vector<uint8_t> encodeDNSName(const std::string& domain) {
+std::vector<uint8_t> encodeDNSName(const std::string &domain) {
     std::vector<uint8_t> encodedName;
     size_t lastPos = 0;
     size_t pos = domain.find('.');
@@ -57,7 +57,7 @@ std::vector<uint8_t> encodeDNSName(const std::string& domain) {
     return encodedName;
 }
 
-std::string reverseIPv4(const std::string& ip) {
+std::string reverseIPv4(const std::string &ip) {
     struct sockaddr_in sa{};
     // validate
     if (inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr)) != 1) {
@@ -74,14 +74,14 @@ std::string reverseIPv4(const std::string& ip) {
     return {buffer};
 }
 
-std::string reverseIPv6(const std::string& ip) {
+std::string reverseIPv6(const std::string &ip) {
     struct sockaddr_in6 sa{};
     // validate
     if (inet_pton(AF_INET6, ip.c_str(), &(sa.sin6_addr)) != 1) {
         throw std::system_error(EINVAL, std::system_category(), "Invalid IPv6 address");
     }
 
-    const char* hexadec = "0123456789abcdef";
+    const char *hexadec = "0123456789abcdef";
     std::string result;
     for (int i = sizeof(hexadec) - 1; i >= 0; --i) {
         uint8_t byte = sa.sin6_addr.s6_addr[i];
@@ -103,7 +103,7 @@ struct DNSHeader {
     uint16_t arcount;
 };
 
-std::string parseDomainNameFromPacket(const std::vector<uint8_t>& packet, size_t& offset) {
+std::string parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t &offset) {
     std::string name;
     bool jumped = false;
     size_t jump_offset = 0;
@@ -177,22 +177,28 @@ namespace dns {
 
     typedef std::vector<uint8_t> Packet;
 
-    std::tuple<std::vector<uint8_t>, Server> constructQueryPacket(const DNSConfiguration& args) {
+    std::tuple<std::vector<uint8_t>, Server> constructQueryPacket(const DNSConfiguration &args) {
         std::vector<uint8_t> packet;
         std::string address = args.address;
 
         uint16_t flags = args.recursionRequested ? FLAG_RD : 0;
 
-        packet.push_back(42); packet.push_back(69); // ID
-        packet.push_back(flags >> 8); packet.push_back(flags & 0xFF);
+        packet.push_back(42);
+        packet.push_back(69); // ID
+        packet.push_back(flags >> 8);
+        packet.push_back(flags & 0xFF);
         // QDCOUNT (number of questions)
-        packet.push_back(0); packet.push_back(1);
+        packet.push_back(0);
+        packet.push_back(1);
         // ANCOUNT (number of answers)
-        packet.push_back(0); packet.push_back(0);
+        packet.push_back(0);
+        packet.push_back(0);
         // NSCOUNT (number of authority records)
-        packet.push_back(0); packet.push_back(0);
+        packet.push_back(0);
+        packet.push_back(0);
         // ARCOUNT (number of additional records)
-        packet.push_back(0); packet.push_back(0);
+        packet.push_back(0);
+        packet.push_back(0);
 
 
         uint16_t qtype = args.queryTypeAAAA ? TYPE_AAAA : TYPE_A;
@@ -203,19 +209,21 @@ namespace dns {
         std::vector<uint8_t> qname = encodeDNSName(address);
         packet.insert(packet.end(), qname.begin(), qname.end());
 
-        packet.push_back(qtype >> 8); packet.push_back(qtype & 0xFF);
-        packet.push_back(classInternet >> 8); packet.push_back(classInternet & 0xFF);
+        packet.push_back(qtype >> 8);
+        packet.push_back(qtype & 0xFF);
+        packet.push_back(CLASS_IN >> 8);
+        packet.push_back(CLASS_IN & 0xFF);
 
         return std::make_tuple(
-            packet,
-            (Server) {
-                .port = args.port.value_or(DEFAULT_DNS_PORT),
-                .address = args.server,
-            }
+                packet,
+                (Server) {
+                        .port = args.port.value_or(DEFAULT_DNS_PORT),
+                        .address = args.server,
+                }
         );
     }
 
-    std::string parseResponsePacket(const std::vector<uint8_t>& response) {
+    std::string parseResponsePacket(const std::vector<uint8_t> &response) {
         std::stringstream output;
         size_t offset = 0;
 
@@ -239,7 +247,7 @@ namespace dns {
         output << "Question section (" << header.qdcount << ")" << std::endl;
         for (int i = 0; i < header.qdcount; ++i) {
             std::string qname = parseDomainNameFromPacket(response, offset);
-            uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
@@ -250,13 +258,12 @@ namespace dns {
         output << "Answer section (" << header.ancount << ")" << std::endl;
         for (int i = 0; i < header.ancount; ++i) {
             std::string name = parseDomainNameFromPacket(response, offset);
-            uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            const uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             const uint16_t ansclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t*>(response.data() + offset));
+            const uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
-            uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
             offset += 2;
 
             output << name << ", " << typeToString(type) << ", " << classToString(ansclass) << ", " << ttl;
@@ -277,19 +284,18 @@ namespace dns {
             }
 
             output << '\n';
-            offset += rdlength;
         }
 
         output << "Authority section (" << header.nscount << ")" << std::endl;
         for (int i = 0; i < header.nscount; ++i) {
             std::string name = parseDomainNameFromPacket(response, offset);
-            uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            const uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             const uint16_t authclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            const uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
-            uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            const uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
 
             output << name << ", " << typeToString(type) << ", " << classToString(authclass) << ", " << ttl << ", [Data]\n";
@@ -298,14 +304,14 @@ namespace dns {
 
         output << "Additional section (" << header.arcount << ")" << std::endl;
         for (int i = 0; i < header.arcount; ++i) {
-            std::string name = parseDomainNameFromPacket(response, offset);
-            uint16_t type = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            const std::string name = parseDomainNameFromPacket(response, offset);
+            const uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             const uint16_t addclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t*>(response.data() + offset));
+            const uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
-            uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t*>(response.data() + offset));
+            const uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
 
             output << name << ", " << typeToString(type) << ", " << classToString(addclass) << ", " << ttl << ", [Data]\n";
