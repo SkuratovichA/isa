@@ -13,10 +13,11 @@
 
 
 // DNS record types
-const uint16_t typeA = 0x0001;
-const uint16_t typeAAAA = 0x001C;
-const uint16_t typePTR = 0x000C;
-const uint16_t typeCNAME = 0x0005;
+const uint16_t TYPE_A = 0x0001;
+const uint16_t TYPE_AAAA = 0x001C;
+const uint16_t TYPE_PTR = 0x000C;
+const uint16_t TYPE_CNAME = 0x0005;
+const uint16_t TYPE_SOA = 0x0006;
 
 // flags
 const uint16_t flagAuthoritative = 0x0400;
@@ -154,12 +155,16 @@ std::string classToString(const uint16_t qclass) {
 
 std::string typeToString(const uint16_t type) {
     switch (type) {
-        case typeA:
+        case TYPE_A:
             return "A";
-        case typeAAAA:
+        case TYPE_AAAA:
             return "AAAA";
-        case typeCNAME:
+        case TYPE_CNAME:
             return "CNAME";
+        case TYPE_SOA:
+            return "SOA";
+        case TYPE_PTR:
+            return "PTR";
         default:
             std::cerr << "unknown type: " << type << std::endl;
             return "UNKNOWN";
@@ -193,9 +198,9 @@ namespace dns {
         packet.push_back(0); packet.push_back(0);
 
 
-        uint16_t qtype = args.queryTypeAAAA ? typeAAAA : typeA;
+        uint16_t qtype = args.queryTypeAAAA ? TYPE_AAAA : TYPE_A;
         if (args.reverseQuery) {
-            qtype = typePTR;
+            qtype = TYPE_PTR;
             address = (args.queryTypeAAAA ? reverseIPv6 : reverseIPv4)(args.address);
         }
         std::vector<uint8_t> qname = encodeDNSName(address);
@@ -259,15 +264,15 @@ namespace dns {
 
             output << name << ", " << typeToString(type) << ", " << classToString(ansclass) << ", " << ttl;
 
-            if (type == typeA) {
+            if (type == TYPE_A) {
                 in_addr addr{};
                 std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
                 output << ", " << inet_ntoa(addr);
-            } else if (type == typeAAAA) {
+            } else if (type == TYPE_AAAA) {
                 char ipv6_str[INET6_ADDRSTRLEN];
                 inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
                 output << ", " << ipv6_str;
-            } else if (type == typeCNAME) {
+            } else if (type == TYPE_CNAME) {
                 std::string cname = parseDomainNameFromPacket(response, offset);
                 output << ", " << cname;
             } else {
