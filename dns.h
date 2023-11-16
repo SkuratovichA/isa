@@ -20,14 +20,11 @@ const uint16_t TYPE_CNAME = 0x0005;
 const uint16_t TYPE_SOA = 0x0006;
 
 // flags
-const uint16_t flagAuthoritative = 0x0400;
-const uint16_t flagRecursive = 0x0100;
-const uint16_t flagTrunc = 0x200;
-const uint16_t flagRD = 0x0100;
-const uint16_t packetCompressed = 0xC0;
-
-// DNS record class
-const uint16_t classInternet = 0x0001;
+const uint16_t FLAG_AUTHORITATIVE = 0x0400;
+const uint16_t FLAG_RECURSIVE = 0x0100;
+const uint16_t FLAG_TRUNC = 0x200;
+const uint16_t FLAG_RD = 0x0100;
+const uint16_t PACKET_COMPRESSED = 0xC0;
 
 const uint16_t DEFAULT_DNS_PORT = 53;
 
@@ -112,7 +109,7 @@ std::string parseDomainNameFromPacket(const std::vector<uint8_t>& packet, size_t
     size_t jump_offset = 0;
 
     while (packet[offset] != 0) {
-        if (packet[offset] >= packetCompressed) {
+        if (packet[offset] >= PACKET_COMPRESSED) {
             if (!jumped) {
                 jump_offset = offset + 2;
                 jumped = true;
@@ -184,7 +181,7 @@ namespace dns {
         std::vector<uint8_t> packet;
         std::string address = args.address;
 
-        uint16_t flags = args.recursionRequested ? flagRD : 0;
+        uint16_t flags = args.recursionRequested ? FLAG_RD : 0;
 
         packet.push_back(42); packet.push_back(69); // ID
         packet.push_back(flags >> 8); packet.push_back(flags & 0xFF);
@@ -234,9 +231,9 @@ namespace dns {
         offset += sizeof(DNSHeader);
 
         // Print header flags
-        output << "Authoritative: " << ((header.flags & flagAuthoritative) ? "Yes" : "No") << ", ";
-        output << "Recursive: " << ((header.flags & flagRecursive) ? "Yes" : "No") << ", ";
-        output << "Truncated: " << ((header.flags & flagTrunc) ? "Yes" : "No") << std::endl;
+        output << "Authoritative: " << ((header.flags & FLAG_AUTHORITATIVE) ? "Yes" : "No") << ", ";
+        output << "Recursive: " << ((header.flags & FLAG_RECURSIVE) ? "Yes" : "No") << ", ";
+        output << "Truncated: " << ((header.flags & FLAG_TRUNC) ? "Yes" : "No") << std::endl;
 
         // Print question section
         output << "Question section (" << header.qdcount << ")" << std::endl;
