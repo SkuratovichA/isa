@@ -60,10 +60,11 @@ std::string reverseIPv4(const std::string& ip) {
 
     char buffer[sizeof("069.420.420.069" "in-addr.arpa") + 1];
     snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d.in-addr.arpa",
-             (sa.sin_addr.s_addr >> 0) & 0xFF,
-             (sa.sin_addr.s_addr >> 8) & 0xFF,
+             (sa.sin_addr.s_addr >> 24) & 0xFF,
              (sa.sin_addr.s_addr >> 16) & 0xFF,
-             (sa.sin_addr.s_addr >> 24) & 0xFF);
+             (sa.sin_addr.s_addr >> 8) & 0xFF,
+             (sa.sin_addr.s_addr >> 0) & 0xFF
+    );
     return {buffer};
 }
 
@@ -133,6 +134,7 @@ std::string typeToString(uint16_t type) {
         case typeCNAME:
             return "CNAME";
         default:
+            std::cerr << "unknown type: " << type << std::endl;
             return "UNKNOWN";
     }
 }
