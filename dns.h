@@ -340,17 +340,21 @@ namespace dns {
 
         // Process sections
         std::string sectionOutput;
+        output << "Question section (" << header.qdcount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.qdcount, parsing::parseQuestionSection);
-        output << "Question section (" << header.qdcount << ")" << std::endl << sectionOutput;
+        output << sectionOutput;
 
+        output << "Answer section (" << header.ancount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.ancount, parsing::parseAnswerSection);
-        output << "Answer section (" << header.ancount << ")" << std::endl << sectionOutput;
+        output << sectionOutput;
 
-        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.arcount, parsing::parseAuthoritySection);
-        output << "Authority section (" << header.ancount << ")" << std::endl << sectionOutput;
+        output << "Authority section (" << header.nscount << ")" << std::endl;
+        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.nscount, parsing::parseAuthoritySection);
+        output << sectionOutput;
 
+        output << "Additional section (" << header.ancount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.arcount, parsing::parseAdditionalSection);
-        output << "Additional section (" << header.ancount << ")" << std::endl << sectionOutput;
+        output << sectionOutput;
 
         return output.str();
     }
