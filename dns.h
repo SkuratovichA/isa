@@ -37,6 +37,8 @@ const uint16_t CLASS_HS = 4;
 const uint16_t CLASS_NONE = 254;
 const uint16_t CLASS_ANY = 255;
 
+const size_t INET6_ADDRLEN = 16;
+
 struct DNSHeader {
     uint16_t id;
     uint16_t flags;
@@ -208,7 +210,7 @@ namespace dns {
                 case TYPE_AAAA: {
                     char ipv6_str[INET6_ADDRSTRLEN];
                     inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
-                    offset += 16;
+                    offset += INET6_ADDRLEN;
                     output << ", " + std::string(ipv6_str);
                     debugMsg("  " << "PARSED AAAA --- " << "addr: " << ipv6_str << ", " << "offset: " << offset << std::endl);
                     break;
