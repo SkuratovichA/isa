@@ -151,7 +151,7 @@ namespace dns {
                 std::string sectionOutput;
                 std::tie(sectionOutput, offset) = parseFunction(response, offset);
                 debugMsg(" >>> PARSED SECTION " << i << ": offset " << offset << ", " << "output \"" << sectionOutput
-                                                << "\"" << std::endl << std::endl);
+                                                << "\"" << std::endl);
                 output << sectionOutput << '\n';
             }
             debugMsg("-----------------" << std::endl);
@@ -159,8 +159,6 @@ namespace dns {
         }
 
         parserResult parseQuestionSection(const std::vector<uint8_t> &response, size_t offset) {
-            debugMsg("PARSE QUESTION SECTION" << std::endl);
-
             std::stringstream output;
             std::string qname{};
             std::tie(qname, offset) = utils::parseDomainNameFromPacket(response, offset);
@@ -174,11 +172,9 @@ namespace dns {
         }
 
         parserResult parseAnswerSection(const std::vector<uint8_t> &response, size_t offset) {
-            debugMsg("PARSE ANSWER SECTION" << std::endl);
             std::stringstream output;
             std::string name;
             std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
-            debugMsg("  name: " << name << ", " << "offset: " << offset << std::endl);
 
             // parse type
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
@@ -203,8 +199,6 @@ namespace dns {
                     std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
                     output << ", " + std::string(inet_ntoa(addr));
                     offset += sizeof(struct in_addr); // Move past the IPv4 address
-                    debugMsg("  " << "PARSED A --- " << "addr: " << inet_ntoa(addr) << ", " << "offset: " << offset
-                                  << std::endl);
                     break;
                 }
                 case TYPE_AAAA: {
@@ -212,18 +206,15 @@ namespace dns {
                     inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
                     offset += INET6_ADDRLEN;
                     output << ", " + std::string(ipv6_str);
-                    debugMsg("  " << "PARSED AAAA --- " << "addr: " << ipv6_str << ", " << "offset: " << offset << std::endl);
                     break;
                 }
                 case TYPE_CNAME: {
                     std::string cname;
                     std::tie(cname, offset) = utils::parseDomainNameFromPacket(response, offset);
                     output << ", " + cname;
-                    debugMsg("  " << "PARSED CNAME --- " << "cname: " << cname << ", " << "offset: " << offset << std::endl);
                     break;
                 }
                 default:
-                    debugMsg("  " << "UNKNOWN TYPE " << type << std::endl);
                     return {"", offset};
             }
 
@@ -462,6 +453,7 @@ namespace dns {
         output << "Truncated: " << ((header.flags & FLAG_TRUNC) ? "Yes" : "No") << std::endl;
 
         // Process sections
+        debugMsg("PARSE QUESTION SECTION" << std::endl);
         std::string sectionOutput;
         output << "Question section (" << header.qdcount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
@@ -470,6 +462,7 @@ namespace dns {
         );
         output << sectionOutput;
 
+        debugMsg("PARSE ANSWER SECTION" << std::endl);
         output << "Answer section (" << header.ancount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
                 response, offset, header.ancount,
@@ -477,6 +470,7 @@ namespace dns {
         );
         output << sectionOutput;
 
+        debugMsg("PARSE AUTHORITY SECTION" << std::endl);
         output << "Authority section (" << header.nscount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
                 response, offset, header.nscount,
@@ -484,6 +478,7 @@ namespace dns {
         );
         output << sectionOutput;
 
+        debugMsg("PARSE ADDITIONAL SECTION" << std::endl);
         output << "Additional section (" << header.ancount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
                 response, offset, header.arcount,
