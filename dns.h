@@ -48,13 +48,6 @@ struct DNSHeader {
     uint16_t arcount;
 };
 
-
-#ifdef DEBUG
-#define debugMsg(msg) do {std::cout << msg; } while(0)
-#else
-#define debugMsg(msg) do {} while(0)
-#endif
-
 typedef std::tuple<std::string, size_t> parserResult;
 
 namespace dns {
