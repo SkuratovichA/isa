@@ -392,8 +392,7 @@ namespace dns {
 
         uint16_t flags = args.recursionRequested ? FLAG_RD : 0;
 
-        packet.push_back(42);
-        packet.push_back(69); // ID
+        packet.push_back(42); packet.push_back(69); // ID
         packet.push_back(flags >> 8);
         packet.push_back(flags & 0xFF);
         // QDCOUNT (number of questions)
@@ -480,7 +479,7 @@ namespace dns {
         output << sectionOutput;
 
         debugMsg("PARSE ADDITIONAL SECTION" << std::endl);
-        output << "Additional section (" << header.ancount << ")" << std::endl;
+        output << "Additional section (" << header.arcount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
                 response, offset, header.arcount,
                 parsing::parseAdditionalSection
