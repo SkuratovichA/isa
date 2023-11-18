@@ -16,15 +16,22 @@
 const size_t DNS_PACKET_SIZE = 512;
 
 namespace udp {
-    std::vector<uint8_t> sendQuery(const std::string &server, uint16_t port, const std::vector<uint8_t> &queryPacket) {
+    std::vector<uint8_t> sendQuery(const std::string &server, uint16_t port, const std::string &address, const std::vector<uint8_t> &queryPacket) {
         addrinfo hints{}, *res;
         hints.ai_family = AF_UNSPEC;
         hints.ai_socktype = SOCK_DGRAM;
         hints.ai_flags = AI_NUMERICHOST;
 
-        const auto status = getaddrinfo(server.c_str(), nullptr, &hints, &res);
-        if (status != 0) {
-            throw std::system_error(errno, std::generic_category(), gai_strerror(status));
+        const auto svaddr_status = getaddrinfo(server.c_str(), nullptr, &hints, &res);
+        if (svaddr_status != 0) {
+            throw std::system_error(errno, std::generic_category(), gai_strerror(svaddr_status));
+        }
+
+        addrinfo *addr_res;
+        const auto addr_status = getaddrinfo(address.c_str(), nullptr, nullptr, &addr_res);
+        if (addr_status != 0) {
+            freeaddrinfo(res);
+            throw std::system_error(errno, std::generic_category(), gai_strerror(addr_status));
         }
 
         const int sockfd = socket(res->ai_family, SOCK_DGRAM, IPPROTO_UDP);
