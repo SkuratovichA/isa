@@ -17,6 +17,7 @@ const uint16_t TYPE_A = 0x0001;
 const uint16_t TYPE_AAAA = 0x001C;
 const uint16_t TYPE_PTR = 0x000C;
 const uint16_t TYPE_CNAME = 0x0005;
+const uint16_t TYPE_NS = 0x0002;
 const uint16_t TYPE_SOA = 0x0006;
 
 // flags
@@ -45,6 +46,14 @@ struct DNSHeader {
     uint16_t arcount;
 };
 
+
+#ifdef DEBUG
+#define debugMsg(msg) do {std::cout << msg; } while(0)
+#else
+#define debugMsg(msg) do {} while(0)
+#endif
+
+typedef std::tuple<std::string, size_t> parserResult;
 
 namespace dns {
     struct Server {
@@ -94,103 +103,203 @@ namespace dns {
                 }
             }
 
-            std::string parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t &offset) {
+            parserResult parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t offset) {
                 std::string name;
                 bool jumped = false;
-                size_t jump_offset = 0;
+                size_t original_offset = offset;
 
                 while (packet[offset] != 0) {
                     if (packet[offset] >= PACKET_COMPRESSED) {
                         if (!jumped) {
-                            jump_offset = offset + 2;
                             jumped = true;
+                            original_offset = offset + 2; // Move past the compression pointer
                         }
-                        uint16_t new_offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1];
-                        offset = new_offset;
+                        offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1]; // Follow the pointer
                     } else {
                         if (!name.empty()) {
                             name += '.';
                         }
                         size_t length = packet[offset++];
+                        // Add error checking for length and packet size
                         for (size_t i = 0; i < length; ++i) {
                             name += static_cast<char>(packet[offset++]);
                         }
                     }
                 }
-                offset = !jumped ? offset + 1 : jump_offset;
 
-                return name;
+                if (!jumped) {
+                    offset++; // Move past the zero byte at the end of the name
+                } else {
+                    offset = original_offset; // Use the original offset if compression was used
+                }
+
+                return {name, offset};
             }
         }
-
-        typedef std::tuple<std::string, size_t> parserResult;
 
         parserResult parseSection(
                 const std::vector<uint8_t> &response,
                 size_t offset,
                 const int count,
-                const std::function<parserResult (const std::vector<uint8_t> &,
-                                                                    size_t)> &parseFunction
+                const std::function<parserResult(const std::vector<uint8_t> &,
+                                                 size_t)> &parseFunction
         ) {
             std::stringstream output;
             for (int i = 0; i < count; ++i) {
                 std::string sectionOutput;
                 std::tie(sectionOutput, offset) = parseFunction(response, offset);
-                output << sectionOutput;
+                debugMsg(" >>> PARSED SECTION " << i << ": offset " << offset << ", " << "output \"" << sectionOutput
+                                                << "\"" << std::endl << std::endl);
+                output << sectionOutput << '\n';
             }
+            debugMsg("-----------------" << std::endl);
             return {output.str(), offset};
         }
 
         parserResult parseQuestionSection(const std::vector<uint8_t> &response, size_t offset) {
+            debugMsg("PARSE QUESTION SECTION" << std::endl);
+
             std::stringstream output;
-            std::string qname = utils::parseDomainNameFromPacket(response, offset);
+            std::string qname{};
+            std::tie(qname, offset) = utils::parseDomainNameFromPacket(response, offset);
             uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            output << qname << ", " << utils::typeToString(qtype) << ", " << utils::classToString(qclass) << std::endl;
+
+            output << qname << ", " << utils::typeToString(qtype) << ", " << utils::classToString(qclass);
             return {output.str(), offset};
         }
 
         parserResult parseAnswerSection(const std::vector<uint8_t> &response, size_t offset) {
+            debugMsg("PARSE ANSWER SECTION" << std::endl);
             std::stringstream output;
-            std::string name = utils::parseDomainNameFromPacket(response, offset);
+            std::string name;
+            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
+            debugMsg("  name: " << name << ", " << "offset: " << offset << std::endl);
+
+            // parse type
             uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
+
+            // ansclass
             uint16_t ansclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
+
+            // ttl
             uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
+
+            // rdlength
             offset += 2; // Skipping RDATA length
 
             output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(ansclass) << ", " << ttl;
 
-            auto processType = [&response, &offset, &type]() -> std::string {
-                if (type == TYPE_A) {
+            switch (type) {
+                case TYPE_A: {
                     in_addr addr{};
                     std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
-                    return ", " + std::string(inet_ntoa(addr));
-                } else if (type == TYPE_AAAA) {
+                    output << ", " + std::string(inet_ntoa(addr));
+                    offset += sizeof(struct in_addr); // Move past the IPv4 address
+                    debugMsg("  " << "PARSED A --- " << "addr: " << inet_ntoa(addr) << ", " << "offset: " << offset
+                                  << std::endl);
+                    break;
+                }
+                case TYPE_AAAA: {
                     char ipv6_str[INET6_ADDRSTRLEN];
                     inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
-                    return ", " + std::string(ipv6_str);
-                } else if (type == TYPE_CNAME) {
-                    std::string cname = utils::parseDomainNameFromPacket(response, offset);
-                    return ", " + std::string(cname);
-                } else {
-                    std::cerr << "Unknown type: " << type << std::endl;
-                    return "";
+                    offset += 16;
+                    output << ", " + std::string(ipv6_str);
+                    debugMsg("  " << "PARSED AAAA --- " << "addr: " << ipv6_str << ", " << "offset: " << offset << std::endl);
+                    break;
                 }
-            };
+                case TYPE_CNAME: {
+                    std::string cname;
+                    std::tie(cname, offset) = utils::parseDomainNameFromPacket(response, offset);
+                    output << ", " + cname;
+                    debugMsg("  " << "PARSED CNAME --- " << "cname: " << cname << ", " << "offset: " << offset << std::endl);
+                    break;
+                }
+                default:
+                    debugMsg("  " << "UNKNOWN TYPE " << type << std::endl);
+                    return {"", offset};
+            }
 
-            output << processType();
-            output << '\n';
             return {output.str(), offset};
         }
 
-        parserResult parseDefaultSection(const std::vector<uint8_t> &response, size_t offset) {
+        parserResult parseSOARecord(const std::vector<uint8_t> &response, size_t offset, size_t rdlength) {
             std::stringstream output;
-            std::string name = utils::parseDomainNameFromPacket(response, offset);
+            std::string mname, rname;
+            size_t startOffset = offset;
+
+            std::tie(mname, offset) = utils::parseDomainNameFromPacket(response, offset);
+            std::tie(rname, offset) = utils::parseDomainNameFromPacket(response, offset);
+
+            uint32_t serial = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+            uint32_t refresh = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+            uint32_t retry = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+            uint32_t expire = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+            uint32_t minimum = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+
+            const auto rdlength_new = offset - startOffset;
+            if (rdlength_new != rdlength) {
+                std::cerr << "WARN: Invalid RDLENGTH for SOA record: " << "expect " << rdlength << ", got "
+                          << rdlength_new << std::endl;
+                return {output.str(), startOffset + rdlength};
+            }
+
+            output << mname << ", " << rname << ", " << serial << ", " << refresh << ", " << retry << ", " << expire
+                   << ", " << minimum;
+            return {output.str(), offset};
+        }
+
+        parserResult parseDefaultRecord(const std::vector<uint8_t> &response, size_t offset, size_t rdlength,
+                                        const char *recordType) {
+            std::stringstream output;
+            std::string name;
+            size_t startOffset = offset;
+
+            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
+
+            const auto rdlength_new = offset - startOffset;
+            if (rdlength_new != rdlength) {
+                std::cerr << "WARN: Invalid RDLENGTH for" << recordType << " record: " << "expected " << rdlength
+                          << ", got " << rdlength_new << std::endl;
+                offset = startOffset + rdlength;
+            }
+
+            output << name;
+            return {output.str(), offset};
+        }
+
+        parserResult parseTypeSpecificSection(uint16_t type, const std::vector<uint8_t> &response, size_t offset,
+                                              uint16_t rdlength) {
+            switch (type) {
+                case TYPE_SOA:
+                    return parseSOARecord(response, offset, rdlength);
+                case TYPE_NS:
+                    return parseDefaultRecord(response, offset, rdlength, "NS");
+                case TYPE_CNAME:
+                    return parseDefaultRecord(response, offset, rdlength, "CNAME");
+                default:
+                    return {"[Unsupported Type Data]", offset + rdlength};
+            }
+        }
+
+        parserResult parseCommonSection(
+                const std::vector<uint8_t> &response, size_t offset,
+                const std::function<parserResult(const uint16_t type, const std::vector<uint8_t> &, size_t,
+                                                 uint16_t)> &parseTypeSpecific) {
+            std::stringstream output;
+            std::string name;
+            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
+
             const uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
             const uint16_t authclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
@@ -199,17 +308,28 @@ namespace dns {
             offset += 4;
             const uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
-            output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(authclass) << ", " << ttl << ", [Data]\n";
-            offset += rdlength;
+
+            std::string typeSpecificOutput;
+            std::tie(typeSpecificOutput, offset) = parseTypeSpecific(type, response, offset, rdlength);
+
+            output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(authclass) << ", "
+                   << ttl << ", " << typeSpecificOutput;
             return {output.str(), offset};
         }
 
         parserResult parseAuthoritySection(const std::vector<uint8_t> &response, size_t offset) {
-            return parseDefaultSection(response, offset);
+            return parseCommonSection(response, offset, parseTypeSpecificSection);
         }
 
+
         parserResult parseAdditionalSection(const std::vector<uint8_t> &response, size_t offset) {
-            return parseDefaultSection(response, offset);
+            return parseCommonSection(
+                    response,
+                    offset,
+                    [](const uint16_t type, const std::vector<uint8_t> &resp, size_t offs, uint16_t rdlen) {
+                        return std::tuple(std::string("[Additional Data]"), offs);
+                    }
+            );
         }
     }
 
@@ -299,7 +419,8 @@ namespace dns {
         uint16_t qtype = args.queryTypeAAAA ? TYPE_AAAA : TYPE_A;
         if (args.reverseQuery) {
             qtype = TYPE_PTR;
-            address = (args.queryTypeAAAA ? constructorUtils::reverseIPv6 : constructorUtils::reverseIPv4)(args.address);
+            address = (args.queryTypeAAAA ? constructorUtils::reverseIPv6 : constructorUtils::reverseIPv4)(
+                    args.address);
         }
         std::vector<uint8_t> qname = constructorUtils::encodeDNSName(address);
         packet.insert(packet.end(), qname.begin(), qname.end());
@@ -341,21 +462,34 @@ namespace dns {
         // Process sections
         std::string sectionOutput;
         output << "Question section (" << header.qdcount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.qdcount, parsing::parseQuestionSection);
+        std::tie(sectionOutput, offset) = parsing::parseSection(
+                response, offset, header.qdcount,
+                parsing::parseQuestionSection
+        );
         output << sectionOutput;
 
         output << "Answer section (" << header.ancount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.ancount, parsing::parseAnswerSection);
+        std::tie(sectionOutput, offset) = parsing::parseSection(
+                response, offset, header.ancount,
+                parsing::parseAnswerSection
+        );
         output << sectionOutput;
 
         output << "Authority section (" << header.nscount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.nscount, parsing::parseAuthoritySection);
+        std::tie(sectionOutput, offset) = parsing::parseSection(
+                response, offset, header.nscount,
+                parsing::parseAuthoritySection
+        );
         output << sectionOutput;
 
         output << "Additional section (" << header.ancount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(response, offset, header.arcount, parsing::parseAdditionalSection);
+        std::tie(sectionOutput, offset) = parsing::parseSection(
+                response, offset, header.arcount,
+                parsing::parseAdditionalSection
+        );
         output << sectionOutput;
 
+        debugMsg("\n\n");
         return output.str();
     }
 }
