@@ -114,9 +114,9 @@ namespace dns {
                     if (packet[offset] >= PACKET_COMPRESSED) {
                         if (!jumped) {
                             jumped = true;
-                            original_offset = offset + 2; // Move past the compression pointer
+                            original_offset = offset + 2;
                         }
-                        offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1]; // Follow the pointer
+                        offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1];
                     } else {
                         if (!name.empty()) {
                             name += '.';
@@ -147,6 +147,7 @@ namespace dns {
                                                  size_t)> &parseFunction
         ) {
             std::stringstream output;
+            debugMsg("Parsing section with " << count << " entries" << std::endl);
             for (int i = 0; i < count; ++i) {
                 std::string sectionOutput;
                 std::tie(sectionOutput, offset) = parseFunction(response, offset);
@@ -198,7 +199,7 @@ namespace dns {
                     in_addr addr{};
                     std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
                     output << ", " + std::string(inet_ntoa(addr));
-                    offset += sizeof(struct in_addr); // Move past the IPv4 address
+                    offset += sizeof(struct in_addr);
                     break;
                 }
                 case TYPE_AAAA: {
@@ -286,9 +287,9 @@ namespace dns {
         }
 
         parserResult parseCommonSection(
-                const std::vector<uint8_t> &response, size_t offset,
-                const std::function<parserResult(const uint16_t type, const std::vector<uint8_t> &, size_t,
-                                                 uint16_t)> &parseTypeSpecific) {
+                const std::vector<uint8_t> &response,
+                size_t offset,
+                const std::function<parserResult(const uint16_t type, const std::vector<uint8_t> &, size_t,uint16_t)> &parseTypeSpecific) {
             std::stringstream output;
             std::string name;
             std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
