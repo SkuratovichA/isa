@@ -414,7 +414,31 @@ namespace dns {
             std::cout << '\n';
         }
 
-        debugMsg("\n\n");
-        return output.str();
+        std::cout << "Authority section (" << header.nscount << ")" << std::endl;
+//                const int count,
+//                &parseFunction
+//            std::stringstream output;
+//            for (int i = 0; i < header.nscount; ++i) {
+//                std::string sectionOutput;
+//                std::tie(sectionOutput, offset) = parseFunction(response, offset);
+//                output << sectionOutput << '\n';
+//            }
+//            return {output.str(), offset};
+//        }
+
+//        std::tie(sectionOutput, offset) = parsing::parseSection(
+//                response, offset, header.nscount,
+//                parsing::parseAuthoritySection
+//        );
+//        output << sectionOutput;
+//
+//        output << "Additional section (" << header.arcount << ")" << std::endl;
+//        std::tie(sectionOutput, offset) = parsing::parseSection(
+//                response, offset, header.arcount,
+//                parsing::parseAdditionalSection
+//        );
+//        output << sectionOutput;
+//
+        return "hiu";
     }
 }
