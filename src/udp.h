@@ -28,7 +28,10 @@ namespace udp {
         addrinfo hints{}, *res;
         hints.ai_family = AF_UNSPEC;
         hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_flags = AI_NUMERICHOST;
+
+        if (getIpAddrType(server) != ADDR_TYPE_UNKNOWN) {
+            hints.ai_flags = AI_NUMERICHOST;
+        }
 
         auto svaddr_status = getaddrinfo(server.c_str(), nullptr, &hints, &res);
         if (svaddr_status != 0) {
