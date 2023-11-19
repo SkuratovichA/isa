@@ -103,18 +103,6 @@ INVALID_ADDRESSES = [
     (f'{PROGRAM_NAME} -s 8.8.8.8.8 "aaaaaa---aa---aaaaaa" ', 'Invalid address', -1),
 ]
 
-TEST_CASES = (
-        INVALID_ARGUMENTS +
-        INVALID_ADDRESSES +
-
-        NON_REV_V4_QUERIES +
-        REV_V4_QUERIES +
-
-        NON_REV_V6_QUERIES +
-        REV_V6_QUERIES
-)
-
-
 TEST_FILENAME = f'test_log_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
 with open(TEST_FILENAME, "w") as file:
     file.write("DNS TESTS\n")
@@ -167,8 +155,8 @@ class DNSInvalidArgumentTest(unittest.TestCase):
         return test
 
 
-def generate_test_cases():
-    for i, (command, desc, expected_error_code) in enumerate(TEST_CASES):
+def generate_test_cases(test_cases: List):
+    for i, (command, desc, expected_error_code) in enumerate(test_cases):
         test_method_name = f'test_{i}_{desc.replace(" ", "_")}'
         test_method = DNSInvalidArgumentTest.make_test_method(
             command,
@@ -181,5 +169,15 @@ def generate_test_cases():
 
 
 if __name__ == '__main__':
-    generate_test_cases()
+    TEST_CASES = (
+            INVALID_ARGUMENTS +
+            INVALID_ADDRESSES +
+
+            NON_REV_V4_QUERIES +
+            REV_V4_QUERIES +
+
+            NON_REV_V6_QUERIES +
+            REV_V6_QUERIES
+    )
+    generate_test_cases(TEST_CASES)
     unittest.main()
