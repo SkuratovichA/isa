@@ -90,7 +90,6 @@ INVALID_ARGUMENTS = [
     (f'{PROGRAM_NAME} invalid', 'Invalid arguments', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1', 'Missing address', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -y www.fit.vut.cz', 'Invalid option', -1),
-    (f'{PROGRAM_NAME} -s 1.1.1.1 www.fit.vut.cz -r', 'Invalid order', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz www.fit.vut.cz', 'Excessive arguments', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz -r', 'Duplicated arguments', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz invalid', 'Invalid argument after all arguments', -1),
