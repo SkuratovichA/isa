@@ -9,6 +9,7 @@ SOURCES = $(SRC_DIR)/main.cpp
 HEADERS = $(SRC_DIR)/argparser.h $(SRC_DIR)/dns.h $(SRC_DIR)/udp.h $(SRC_DIR)/types.h
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 TEST_SCRIPT = test_dns.py
+TEST_VENV = test_venv
 
 .PHONY: all clean test debug
 
@@ -26,7 +27,11 @@ debug: $(EXEC)
 
 clean:
 	rm -f $(EXEC)
+	rm -rf $(TEST_VENV)
 	rm -rf $(OBJ_DIR)
 
-test: ${EXEC}
-	python3 $(TEST_SCRIPT)
+test: all
+	rm -rf $(TEST_VENV)
+	python3 -m venv $(TEST_VENV)
+	$(TEST_VENV)/bin/pip install -r requirements.txt
+	$(TEST_VENV)/bin/python $(TEST_SCRIPT)
