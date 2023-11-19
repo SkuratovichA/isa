@@ -2,7 +2,8 @@ import unittest
 import subprocess
 import socket
 from dns import resolver
-from typing import List, Tuple
+from typing import List
+from datetime import datetime
 
 
 def get_servers(version: socket.AF_INET6 | socket.AF_INET) -> List:
@@ -114,6 +115,12 @@ TEST_CASES = (
 )
 
 
+TEST_FILENAME = f'test_log_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
+with open(TEST_FILENAME, "w") as file:
+    file.write("DNS TESTS\n")
+    file.write("-" * 40 + "\n")
+
+
 class DNSInvalidArgumentTest(unittest.TestCase):
     def run_dns_command(self, command):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -132,11 +139,23 @@ class DNSInvalidArgumentTest(unittest.TestCase):
                 process.stderr.close()
 
     @staticmethod
+    def write_test_result_to_file(desc, stdout, stderr, status, msg, command):
+        with open(TEST_FILENAME, "a") as f:
+            f.write(f"Description: {desc}\n")
+            f.write(f"Command: {command}\n")
+            f.write(f"Message: {msg}\n")
+            f.write(f"Stdout: {stdout}\n")
+            f.write(f"Stderr: {stderr}\n")
+            f.write(f"Status: {status}\n")
+            f.write("-" * 40 + "\n\n")
+
+    @staticmethod
     def make_test_method(command, assert_meth, desc):
         def test(self):
-            o, e, c = self.run_dns_command(command)
-            msg = f'{desc} - {assert_meth.__name__}({c}, 0)'
-            getattr(self, assert_meth.__name__)(c, 0, msg)
+            stdout, stderr, status = self.run_dns_command(command)
+            msg = f'{desc} - {assert_meth.__name__}({status}, 0)'
+            self.write_test_result_to_file(desc, stdout, stderr, status, msg, command)
+            getattr(self, assert_meth.__name__)(status, 0, msg)
 
         return test
 
