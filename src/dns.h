@@ -99,7 +99,7 @@ namespace dns {
                 }
             }
 
-            parserResult parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t offset) {
+            parserResult parseDomainNameFromPacket(const Packet &packet, size_t offset) {
                 std::string name;
                 bool jumped = false;
                 size_t original_offset = offset;
@@ -134,11 +134,10 @@ namespace dns {
         }
 
         parserResult parseSection(
-                const std::vector<uint8_t> &response,
+                const Packet &response,
                 size_t offset,
                 const int count,
-                const std::function<parserResult(const std::vector<uint8_t> &,
-                                                 size_t)> &parseFunction
+                const std::function<parserResult(const Packet &, size_t)> &parseFunction
         ) {
             std::stringstream output;
             debugMsg("Parsing section with " << count << " entries" << std::endl);
@@ -157,7 +156,7 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseQuestionSection(const std::vector<uint8_t> &response, size_t offset) {
+        parserResult parseQuestionSection(const Packet &response, size_t offset) {
             std::stringstream output;
             std::string qname{};
             std::tie(qname, offset) = utils::parseDomainNameFromPacket(response, offset);
@@ -170,7 +169,7 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseAnswerSection(const std::vector<uint8_t> &response, size_t offset) {
+        parserResult parseAnswerSection(const Packet &response, size_t offset) {
             std::stringstream output;
             std::string name;
             std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
@@ -220,7 +219,7 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseSOARecord(const std::vector<uint8_t> &response, size_t offset, size_t rdlength) {
+        parserResult parseSOARecord(const Packet &response, size_t offset, size_t rdlength) {
             std::stringstream output;
             std::string mname, rname;
             size_t startOffset = offset;
@@ -251,8 +250,7 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseDefaultRecord(const std::vector<uint8_t> &response, size_t offset, size_t rdlength,
-                                        const char *recordType) {
+        parserResult parseDefaultRecord(const Packet &response, size_t offset, size_t rdlength, const char *recordType) {
             std::stringstream output;
             std::string name;
             size_t startOffset = offset;
@@ -270,7 +268,7 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseTypeSpecificSection(uint16_t type, const std::vector<uint8_t> &response, size_t offset,
+        parserResult parseTypeSpecificSection(uint16_t type, const Packet &response, size_t offset,
                                               uint16_t rdlength) {
             switch (type) {
                 case TYPE_SOA:
@@ -285,9 +283,9 @@ namespace dns {
         }
 
         parserResult parseCommonSection(
-                const std::vector<uint8_t> &response,
+                const Packet &response,
                 size_t offset,
-                const std::function<parserResult(const uint16_t type, const std::vector<uint8_t> &, size_t,uint16_t)> &parseTypeSpecific) {
+                const std::function<parserResult(const uint16_t type, const Packet &, size_t,uint16_t)> &parseTypeSpecific) {
             std::stringstream output;
             std::string name;
             std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
@@ -309,16 +307,16 @@ namespace dns {
             return {output.str(), offset};
         }
 
-        parserResult parseAuthoritySection(const std::vector<uint8_t> &response, size_t offset) {
+        parserResult parseAuthoritySection(const Packet &response, size_t offset) {
             return parseCommonSection(response, offset, parseTypeSpecificSection);
         }
 
 
-        parserResult parseAdditionalSection(const std::vector<uint8_t> &response, size_t offset) {
+        parserResult parseAdditionalSection(const Packet &response, size_t offset) {
             return parseCommonSection(
                     response,
                     offset,
-                    [](const uint16_t type, const std::vector<uint8_t> &resp, size_t offs, uint16_t rdlen) {
+                    [](const uint16_t type, const Packet &resp, size_t offs, uint16_t rdlen) {
                         return std::tuple(std::string("[Additional Data]"), offs + rdlen);
                     }
             );
@@ -384,8 +382,8 @@ namespace dns {
         }
     }
 
-    std::tuple<std::vector<uint8_t>, Server> constructQueryPacket(const DNSConfiguration &args) {
-        std::vector<uint8_t> packet;
+    std::tuple<Packet, Server> constructQueryPacket(const DNSConfiguration &args) {
+        Packet packet;
         std::string address = args.address;
 
         uint16_t flags = args.recursionRequested ? FLAG_RD : 0;
@@ -430,7 +428,7 @@ namespace dns {
         }
     }
 
-    std::string parseResponsePacket(const std::vector<uint8_t> &response) {
+    std::string parseResponsePacket(const Packet &response) {
         std::stringstream output;
         size_t offset = 0;
 
