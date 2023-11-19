@@ -6,6 +6,7 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <sstream>
+#include <functional>
 #include <tuple>
 
 #include "argparser.h"

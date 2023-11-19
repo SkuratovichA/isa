@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <iostream>
+#include <memory>
 
 
 const size_t DNS_PACKET_SIZE = 512;
