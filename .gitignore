@@ -2,3 +2,6 @@
 /cmake-build-debug/
 .test_log*
 object_files/
+*venv*
+.idea
+*.log
