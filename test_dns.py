@@ -95,6 +95,7 @@ INVALID_ARGUMENTS = [
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz -r', 'Duplicated arguments', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz invalid', 'Invalid argument after all arguments', -1),
     (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz -p "-9000"', 'Invalid port', -1),
+    (f'{PROGRAM_NAME} -s 1.1.1.1 -r www.fit.vut.cz -p abubus', 'Invalid port', -1),
 ]
 
 INVALID_ADDRESSES = [
