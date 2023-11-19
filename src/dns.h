@@ -425,7 +425,7 @@ namespace dns {
                 .port = args.port.value_or(DEFAULT_DNS_PORT),
                 .address = args.server,
              }
-        }
+        };
     }
 
     std::string parseResponsePacket(const Packet &response) {
