@@ -17,7 +17,6 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
-    // Construct the query packet
     dns::Packet queryPacket;
     dns::Server server;
     try {
@@ -27,7 +26,6 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
-    // Send the query and receive the response
     std::vector<uint8_t> response;
     try {
         debugMsg("Sending DNS query to " << server << ":" << port << " for " << address << std::endl);
@@ -37,7 +35,6 @@ int main(int argc, const char** argv) {
         return -1;
     }
 
-    // Parse and display the response
     const auto result = dns::parseResponsePacket(response);
     std::cout << result;
 
