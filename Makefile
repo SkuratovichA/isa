@@ -11,7 +11,7 @@ OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SOURCES))
 TEST_SCRIPT = test_dns.py
 TEST_VENV = test_venv
 
-.PHONY: all clean test debug
+.PHONY: all clean test debug archive
 
 all: $(EXEC)
 
@@ -35,3 +35,6 @@ test: all
 	python3 -m venv $(TEST_VENV)
 	$(TEST_VENV)/bin/pip install -r requirements.txt
 	$(TEST_VENV)/bin/python $(TEST_SCRIPT)
+
+archive:
+	tar -cvf xskura01.tar $(SRC_DIR) Makefile requirements.txt README.md $(TEST_SCRIPT)
