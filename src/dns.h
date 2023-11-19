@@ -145,9 +145,13 @@ namespace dns {
             for (int i = 0; i < count; ++i) {
                 std::string sectionOutput;
                 std::tie(sectionOutput, offset) = parseFunction(response, offset);
-                debugMsg(" >>> PARSED SECTION " << i << ": offset " << offset << ", " << "output \"" << sectionOutput
-                                                << "\"" << std::endl);
-                output << sectionOutput << '\n';
+                debugMsg(
+                    " >>> PARSED SECTION " << i
+                    << ": offset " << offset << ", "
+                    << "output \"" << sectionOutput << "\""
+                    << std::endl
+                );
+                output << "  " << sectionOutput << '\n';
             }
             debugMsg("-----------------" << std::endl);
             return {output.str(), offset};
