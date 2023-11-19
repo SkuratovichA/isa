@@ -37,4 +37,4 @@ test: all
 	$(TEST_VENV)/bin/python $(TEST_SCRIPT)
 
 archive:
-	tar -cvf xskura01.tar $(SRC_DIR) Makefile requirements.txt README.md $(TEST_SCRIPT)
+	tar -cvf xskura01.tar $(SRC_DIR) Makefile requirements.txt README.md $(TEST_SCRIPT) manual.pdf
