@@ -1,0 +1,5 @@
+cffi @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_b4nang6w_y/croot/cffi_1700254307954/work
+cryptography @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_905z2r5rpq/croot/cryptography_1694211573866/work
+dnspython @ file:///Users/cbousseau/work/recipes/ci_py311/dnspython_1677953887907/work
+idna @ file:///Users/cbousseau/work/recipes/ci_py311/idna_1677906072337/work
+pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
