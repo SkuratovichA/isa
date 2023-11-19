@@ -1,2 +1,4 @@
 # Project exclude paths
 /cmake-build-debug/
+.test_log*
+object_files/
