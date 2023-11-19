@@ -139,23 +139,30 @@ class DNSInvalidArgumentTest(unittest.TestCase):
                 process.stderr.close()
 
     @staticmethod
-    def write_test_result_to_file(desc, stdout, stderr, status, msg, command):
+    def write_test_result_to_file(desc, stdout, stderr, code, msg, command, status, num):
         with open(TEST_FILENAME, "a") as f:
-            f.write(f"Description: {desc}\n")
+            f.write(f"Test {num}: {desc}\n")
             f.write(f"Command: {command}\n")
             f.write(f"Message: {msg}\n")
+            f.write(f"Status: {status}\n\n")
             f.write(f"Stdout: {stdout}\n")
             f.write(f"Stderr: {stderr}\n")
-            f.write(f"Status: {status}\n")
+            f.write(f"Status: {code}\n")
             f.write("-" * 40 + "\n\n")
 
     @staticmethod
-    def make_test_method(command, assert_meth, desc):
+    def make_test_method(command, assert_meth, desc, num):
         def test(self):
-            stdout, stderr, status = self.run_dns_command(command)
-            msg = f'{desc} - {assert_meth.__name__}({status}, 0)'
-            self.write_test_result_to_file(desc, stdout, stderr, status, msg, command)
-            getattr(self, assert_meth.__name__)(status, 0, msg)
+            stdout, stderr, code = self.run_dns_command(command)
+            msg = f'{desc} - {assert_meth.__name__}({code}, 0)'
+            status = 'Success'
+            try:
+                getattr(self, assert_meth.__name__)(code, 0, msg)
+            except Exception as e:
+                status = 'Failed'
+                raise e
+            finally:
+                self.write_test_result_to_file(desc, stdout, stderr, code, msg, command, status, num)
 
         return test
 
@@ -166,7 +173,8 @@ def generate_test_cases():
         test_method = DNSInvalidArgumentTest.make_test_method(
             command,
             DNSInvalidArgumentTest.assertEqual if expected_error_code == 0 else DNSInvalidArgumentTest.assertNotEqual,
-            desc
+            desc,
+            i
         )
         test_method.__doc__ = command
         setattr(DNSInvalidArgumentTest, test_method_name, test_method)
