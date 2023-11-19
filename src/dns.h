@@ -124,7 +124,7 @@ namespace dns {
                 }
 
                 if (!jumped) {
-                    offset++; // Move past the zero byte at the end of the name
+                    offset++; // Skip the trailing 0
                 } else {
                     offset = original_offset; // Use the original offset if compression was used
                 }
@@ -421,13 +421,13 @@ namespace dns {
         packet.push_back(CLASS_IN >> 8);
         packet.push_back(CLASS_IN & 0xFF);
 
-        return std::make_tuple(
-                packet,
-                (Server) {
-                        .port = args.port.value_or(DEFAULT_DNS_PORT),
-                        .address = args.server,
-                }
-        );
+        return {
+            packet,
+            (Server) {
+                .port = args.port.value_or(DEFAULT_DNS_PORT),
+                .address = args.server,
+             }
+        }
     }
 
     std::string parseResponsePacket(const std::vector<uint8_t> &response) {
