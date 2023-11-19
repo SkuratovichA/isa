@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <iostream>
 #include <memory>
+#include <functional>
 
 #include "utils.h"
 
@@ -35,34 +36,36 @@ namespace udp {
         }
         std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> res_guard(res, freeaddrinfo);
 
-        int sockfd = socket(res->ai_family, SOCK_DGRAM, IPPROTO_UDP);
-        if (sockfd < 0) {
+        auto sockfd_deleter = [](int* pfd) {
+            if (pfd && *pfd >= 0) {
+                close(*pfd);
+                delete pfd;
+            }
+        };
+        std::unique_ptr<int, decltype(sockfd_deleter)> sockfd(new int(socket(res->ai_family, SOCK_DGRAM, IPPROTO_UDP)), sockfd_deleter);
+        if (*sockfd < 0) {
             throw std::system_error(errno, std::generic_category(), "Failed to create UDP socket");
         }
 
-        ssize_t sent_bytes = sendto(sockfd, queryPacket.data(), queryPacket.size(), 0, res->ai_addr, res->ai_addrlen);
+        ssize_t sent_bytes = sendto(*sockfd, queryPacket.data(), queryPacket.size(), 0, res->ai_addr, res->ai_addrlen);
         if (sent_bytes < 0) {
-            close(sockfd);
             throw std::system_error(errno, std::generic_category(), "Failed to send DNS query");
         }
 
         timeval tv{};
         tv.tv_sec = timeoutSec;
         tv.tv_usec = 0;
-        if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-            close(sockfd);
+        if (setsockopt(*sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
             throw std::system_error(errno, std::generic_category(), "Failed to set socket timeout");
         }
 
         std::vector<uint8_t> responseBuffer(DNS_PACKET_SIZE);
-        ssize_t received_bytes = recvfrom(sockfd, responseBuffer.data(), responseBuffer.size(), 0, nullptr, nullptr);
+        ssize_t received_bytes = recvfrom(*sockfd, responseBuffer.data(), responseBuffer.size(), 0, nullptr, nullptr);
         if (received_bytes < 0) {
-            close(sockfd);
             throw std::system_error(errno, std::generic_category(), "Failed to receive DNS response or timed out");
         }
 
         responseBuffer.resize(received_bytes);
-        close(sockfd);
         return responseBuffer;
     }
 }
