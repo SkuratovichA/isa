@@ -340,7 +340,6 @@ namespace dns {
     }
 
     std::string parseResponsePacket(const std::vector<uint8_t> &response) {
-        std::stringstream output;
         size_t offset = 0;
 
         // Parse the header
@@ -355,19 +354,21 @@ namespace dns {
         offset += sizeof(DNSHeader);
 
         // Print header flags
-        output << "Authoritative: " << ((header.flags & FLAG_AUTHORITATIVE) ? "Yes" : "No") << ", ";
-        output << "Recursive: " << ((header.flags & FLAG_RECURSIVE) ? "Yes" : "No") << ", ";
-        output << "Truncated: " << ((header.flags & FLAG_TRUNC) ? "Yes" : "No") << std::endl;
+        std::cout << "Authoritative: " << ((header.flags & FLAG_AUTHORITATIVE) ? "Yes" : "No") << ", ";
+        std::cout << "Recursive: " << ((header.flags & FLAG_RECURSIVE) ? "Yes" : "No") << ", ";
+        std::cout << "Truncated: " << ((header.flags & FLAG_TRUNC) ? "Yes" : "No") << std::endl;
 
         // Process sections
-        debugMsg("PARSE QUESTION SECTION" << std::endl);
-        std::string sectionOutput;
-        output << "Question section (" << header.qdcount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(
-                response, offset, header.qdcount,
-                parsing::parseQuestionSection
-        );
-        output << sectionOutput;
+        std::cout << "Question section (" << header.qdcount << ")" << std::endl;
+        for (int i = 0; i < header.qdcount; ++i) {
+            std::string qname{};
+            std::tie(qname, offset) = parseDomainNameFromPacket(response, offset);
+            uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            offset += 2;
+            uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            offset += 2;
+            std::cout << qname << ", " << typeToString(qtype) << ", " << classToString(qclass) << '\n';
+        }
 
         debugMsg("PARSE ANSWER SECTION" << std::endl);
         output << "Answer section (" << header.ancount << ")" << std::endl;
