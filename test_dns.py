@@ -172,7 +172,6 @@ def generate_test_cases():
         setattr(DNSInvalidArgumentTest, test_method_name, test_method)
 
 
-generate_test_cases()
-
 if __name__ == '__main__':
+    generate_test_cases()
     unittest.main()
