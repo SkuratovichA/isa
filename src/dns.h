@@ -51,6 +51,78 @@ struct DNSHeader {
 
 typedef std::tuple<std::string, size_t> parserResult;
 
+
+std::string classToString(const uint16_t qclass) {
+    switch (qclass) {
+        case CLASS_IN:
+            return "IN";
+        case CLASS_CS:
+            return "CS";
+        case CLASS_CH:
+            return "CH";
+        case CLASS_HS:
+            return "HS";
+        case CLASS_NONE:
+            return "NONE";
+        case CLASS_ANY:
+            return "ANY";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+std::string typeToString(const uint16_t type) {
+    switch (type) {
+        case TYPE_A:
+            return "A";
+        case TYPE_AAAA:
+            return "AAAA";
+        case TYPE_CNAME:
+            return "CNAME";
+        case TYPE_SOA:
+            return "SOA";
+        case TYPE_PTR:
+            return "PTR";
+        default:
+            std::cerr << "unknown type: " << type << std::endl;
+            return "UNKNOWN";
+    }
+}
+
+parserResult parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t offset) {
+    std::string name;
+    bool jumped = false;
+    size_t original_offset = offset;
+
+    while (packet[offset] != 0) {
+        if (packet[offset] >= PACKET_COMPRESSED) {
+            if (!jumped) {
+                jumped = true;
+                original_offset = offset + 2;
+            }
+            offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1];
+        } else {
+            if (!name.empty()) {
+                name += '.';
+            }
+            size_t length = packet[offset++];
+            // Add error checking for length and packet size
+            for (size_t i = 0; i < length; ++i) {
+                name += static_cast<char>(packet[offset++]);
+            }
+        }
+    }
+
+    if (!jumped) {
+        offset++; // Move past the zero byte at the end of the name
+    } else {
+        offset = original_offset; // Use the original offset if compression was used
+    }
+
+    return {name, offset};
+}
+
+
 namespace dns {
     struct Server {
         uint16_t port;
@@ -61,172 +133,13 @@ namespace dns {
 
     namespace parsing {
 
-        namespace utils {
-            std::string classToString(const uint16_t qclass) {
-                switch (qclass) {
-                    case CLASS_IN:
-                        return "IN";
-                    case CLASS_CS:
-                        return "CS";
-                    case CLASS_CH:
-                        return "CH";
-                    case CLASS_HS:
-                        return "HS";
-                    case CLASS_NONE:
-                        return "NONE";
-                    case CLASS_ANY:
-                        return "ANY";
-                    default:
-                        return "UNKNOWN";
-                }
-            }
-
-            std::string typeToString(const uint16_t type) {
-                switch (type) {
-                    case TYPE_A:
-                        return "A";
-                    case TYPE_AAAA:
-                        return "AAAA";
-                    case TYPE_CNAME:
-                        return "CNAME";
-                    case TYPE_SOA:
-                        return "SOA";
-                    case TYPE_PTR:
-                        return "PTR";
-                    default:
-                        std::cerr << "unknown type: " << type << std::endl;
-                        return "UNKNOWN";
-                }
-            }
-
-            parserResult parseDomainNameFromPacket(const std::vector<uint8_t> &packet, size_t offset) {
-                std::string name;
-                bool jumped = false;
-                size_t original_offset = offset;
-
-                while (packet[offset] != 0) {
-                    if (packet[offset] >= PACKET_COMPRESSED) {
-                        if (!jumped) {
-                            jumped = true;
-                            original_offset = offset + 2;
-                        }
-                        offset = ((packet[offset] & 0x3F) << 8) | packet[offset + 1];
-                    } else {
-                        if (!name.empty()) {
-                            name += '.';
-                        }
-                        size_t length = packet[offset++];
-                        // Add error checking for length and packet size
-                        for (size_t i = 0; i < length; ++i) {
-                            name += static_cast<char>(packet[offset++]);
-                        }
-                    }
-                }
-
-                if (!jumped) {
-                    offset++; // Move past the zero byte at the end of the name
-                } else {
-                    offset = original_offset; // Use the original offset if compression was used
-                }
-
-                return {name, offset};
-            }
-        }
-
-        parserResult parseSection(
-                const std::vector<uint8_t> &response,
-                size_t offset,
-                const int count,
-                const std::function<parserResult(const std::vector<uint8_t> &,
-                                                 size_t)> &parseFunction
-        ) {
-            std::stringstream output;
-            debugMsg("Parsing section with " << count << " entries" << std::endl);
-            for (int i = 0; i < count; ++i) {
-                std::string sectionOutput;
-                std::tie(sectionOutput, offset) = parseFunction(response, offset);
-                debugMsg(
-                    " >>> PARSED SECTION " << i
-                    << ": offset " << offset << ", "
-                    << "output \"" << sectionOutput << "\""
-                    << std::endl
-                );
-                output << "  " << sectionOutput << '\n';
-            }
-            debugMsg("-----------------" << std::endl);
-            return {output.str(), offset};
-        }
-
-        parserResult parseQuestionSection(const std::vector<uint8_t> &response, size_t offset) {
-            std::stringstream output;
-            std::string qname{};
-            std::tie(qname, offset) = utils::parseDomainNameFromPacket(response, offset);
-            uint16_t qtype = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
-            offset += 2;
-            uint16_t qclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
-            offset += 2;
-
-            output << qname << ", " << utils::typeToString(qtype) << ", " << utils::classToString(qclass);
-            return {output.str(), offset};
-        }
-
-        parserResult parseAnswerSection(const std::vector<uint8_t> &response, size_t offset) {
-            std::stringstream output;
-            std::string name;
-            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
-
-            // parse type
-            uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
-            offset += 2;
-
-            // ansclass
-            uint16_t ansclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
-            offset += 2;
-
-            // ttl
-            uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
-            offset += 4;
-
-            // rdlength
-            offset += 2; // Skipping RDATA length
-
-            output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(ansclass) << ", " << ttl;
-
-            switch (type) {
-                case TYPE_A: {
-                    in_addr addr{};
-                    std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
-                    output << ", " + std::string(inet_ntoa(addr));
-                    offset += sizeof(struct in_addr);
-                    break;
-                }
-                case TYPE_AAAA: {
-                    char ipv6_str[INET6_ADDRSTRLEN];
-                    inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
-                    offset += INET6_ADDRLEN;
-                    output << ", " + std::string(ipv6_str);
-                    break;
-                }
-                case TYPE_CNAME: {
-                    std::string cname;
-                    std::tie(cname, offset) = utils::parseDomainNameFromPacket(response, offset);
-                    output << ", " + cname;
-                    break;
-                }
-                default:
-                    return {"", offset};
-            }
-
-            return {output.str(), offset};
-        }
-
         parserResult parseSOARecord(const std::vector<uint8_t> &response, size_t offset, size_t rdlength) {
             std::stringstream output;
             std::string mname, rname;
             size_t startOffset = offset;
 
-            std::tie(mname, offset) = utils::parseDomainNameFromPacket(response, offset);
-            std::tie(rname, offset) = utils::parseDomainNameFromPacket(response, offset);
+            std::tie(mname, offset) = parseDomainNameFromPacket(response, offset);
+            std::tie(rname, offset) = parseDomainNameFromPacket(response, offset);
 
             uint32_t serial = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
             offset += 4;
@@ -257,7 +170,7 @@ namespace dns {
             std::string name;
             size_t startOffset = offset;
 
-            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
+            std::tie(name, offset) = parseDomainNameFromPacket(response, offset);
 
             const auto rdlength_new = offset - startOffset;
             if (rdlength_new != rdlength) {
@@ -290,7 +203,7 @@ namespace dns {
                 const std::function<parserResult(const uint16_t type, const std::vector<uint8_t> &, size_t,uint16_t)> &parseTypeSpecific) {
             std::stringstream output;
             std::string name;
-            std::tie(name, offset) = utils::parseDomainNameFromPacket(response, offset);
+            std::tie(name, offset) = parseDomainNameFromPacket(response, offset);
 
             const uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
@@ -304,7 +217,7 @@ namespace dns {
             std::string typeSpecificOutput;
             std::tie(typeSpecificOutput, offset) = parseTypeSpecific(type, response, offset, rdlength);
 
-            output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(authclass) << ", "
+            output << name << ", " << typeToString(type) << ", " << classToString(authclass) << ", "
                    << ttl << ", " << typeSpecificOutput;
             return {output.str(), offset};
         }
