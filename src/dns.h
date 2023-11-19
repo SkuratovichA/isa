@@ -10,7 +10,7 @@
 #include <tuple>
 
 #include "argparser.h"
-#include "types.h"
+#include "utils.h"
 
 
 // DNS record types
@@ -345,7 +345,7 @@ namespace dns {
         std::string reverseIPv4(const std::string &ip) {
             struct sockaddr_in sa{};
             // validate
-            if (inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr)) != 1) {
+            if (getIpAddrType(ip) != ADDR_TYPE_A) {
                 throw std::system_error(EINVAL, std::system_category(), "Invalid IPv4 address");
             }
 
@@ -362,7 +362,7 @@ namespace dns {
         std::string reverseIPv6(const std::string &ip) {
             struct sockaddr_in6 sa{};
             // validate
-            if (inet_pton(AF_INET6, ip.c_str(), &(sa.sin6_addr)) != 1) {
+            if (getIpAddrType(ip) !== ADDR_TYPE_AAAA) {
                 throw std::system_error(EINVAL, std::system_category(), "Invalid IPv6 address");
             }
 

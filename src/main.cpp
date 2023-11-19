@@ -1,7 +1,7 @@
 #include "argparser.h"
 #include "dns.h"
 #include "udp.h"
-#include "types.h"
+#include "utils.h"
 
 #include <iostream>
 

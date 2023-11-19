@@ -13,6 +13,8 @@
 #include <iostream>
 #include <memory>
 
+#include "utils.h"
+
 
 const size_t DNS_PACKET_SIZE = 512;
 
