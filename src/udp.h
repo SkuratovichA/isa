@@ -44,15 +44,6 @@ namespace udp {
             throw std::system_error(errno, std::generic_category(), "Failed to create UDP socket");
         }
 
-        if (res->ai_family == AF_INET) {
-            reinterpret_cast<sockaddr_in *>(res->ai_addr)->sin_port = htons(port);
-        } else if (res->ai_family == AF_INET6) {
-            reinterpret_cast<sockaddr_in6 *>(res->ai_addr)->sin6_port = htons(port);
-        } else {
-            close(sockfd);
-            throw std::system_error(errno, std::generic_category(), "Unsupported address family");
-        }
-
         ssize_t sent_bytes = sendto(sockfd, queryPacket.data(), queryPacket.size(), 0, res->ai_addr, res->ai_addrlen);
         if (sent_bytes < 0) {
             close(sockfd);

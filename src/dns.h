@@ -362,7 +362,7 @@ namespace dns {
         std::string reverseIPv6(const std::string &ip) {
             struct sockaddr_in6 sa{};
             // validate
-            if (getIpAddrType(ip) !== ADDR_TYPE_AAAA) {
+            if (getIpAddrType(ip) != ADDR_TYPE_AAAA) {
                 throw std::system_error(EINVAL, std::system_category(), "Invalid IPv6 address");
             }
 
