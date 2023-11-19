@@ -5,3 +5,4 @@ object_files/
 *venv*
 .idea
 *.log
+dns
