@@ -32,9 +32,3 @@ ADDR_TYPE getIpAddrType(const std::string &address) {
     }
     return ADDR_TYPE_UNKNOWN;
 }
-
-#ifdef DEBUG
-#define debugMsg(msg) do {std::cout << msg; } while(0)
-#else
-#define debugMsg(msg) do {} while(0)
-#endif
