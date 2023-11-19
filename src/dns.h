@@ -370,29 +370,49 @@ namespace dns {
             std::cout << qname << ", " << typeToString(qtype) << ", " << classToString(qclass) << '\n';
         }
 
-        debugMsg("PARSE ANSWER SECTION" << std::endl);
-        output << "Answer section (" << header.ancount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(
-                response, offset, header.ancount,
-                parsing::parseAnswerSection
-        );
-        output << sectionOutput;
+        std::cout << "Answer section (" << header.ancount << ")" << std::endl;
+        for (int i = 0; i < header.ancount; ++i) {
+            std::string name;
+            std::tie(name, offset) = parseDomainNameFromPacket(response, offset);
+            // parse type
+            uint16_t type = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            offset += 2;
+            // ansclass
+            uint16_t ansclass = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+            offset += 2;
+            // ttl
+            uint32_t ttl = ntohl(*reinterpret_cast<const uint32_t *>(response.data() + offset));
+            offset += 4;
+            // rdlength
+            offset += 2; // Skipping RDATA length
 
-        debugMsg("PARSE AUTHORITY SECTION" << std::endl);
-        output << "Authority section (" << header.nscount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(
-                response, offset, header.nscount,
-                parsing::parseAuthoritySection
-        );
-        output << sectionOutput;
+            std::cout << name << ", " << typeToString(type) << ", " << classToString(ansclass) << ", " << ttl;
 
-        debugMsg("PARSE ADDITIONAL SECTION" << std::endl);
-        output << "Additional section (" << header.arcount << ")" << std::endl;
-        std::tie(sectionOutput, offset) = parsing::parseSection(
-                response, offset, header.arcount,
-                parsing::parseAdditionalSection
-        );
-        output << sectionOutput;
+            in_addr addr{};
+            char ipv6_str[INET6_ADDRSTRLEN];
+            std::string cname;
+            switch (type) {
+                case TYPE_A:
+                     std::memcpy(&addr, response.data() + offset, sizeof(struct in_addr));
+                     std::cout << ", " + std::string(inet_ntoa(addr));
+                     offset += sizeof(struct in_addr);
+                     break;
+                case TYPE_AAAA:
+                    inet_ntop(AF_INET6, response.data() + offset, ipv6_str, INET6_ADDRSTRLEN);
+                    offset += INET6_ADDRLEN;
+                    std::cout << ", " + std::string(ipv6_str);
+                    break;
+                case TYPE_CNAME:
+                     std::tie(cname, offset) = parseDomainNameFromPacket(response, offset);
+                     std::cout << ", " + cname;
+                     break;
+                default:
+                    std::cout << ", [Unsupported Type Data]";
+                    offset += ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
+                    break;
+            }
+            std::cout << '\n';
+        }
 
         debugMsg("\n\n");
         return output.str();
