@@ -30,7 +30,8 @@ int main(int argc, const char** argv) {
     // Send the query and receive the response
     std::vector<uint8_t> response;
     try {
-        response = udp::sendQuery(server.address, server.port, args.address, queryPacket, TIMEOUT_SEC);
+        debugMsg("Sending DNS query to " << server << ":" << port << " for " << address << std::endl);
+        response = udp::sendQuery(server.address, server.port, queryPacket, TIMEOUT_SEC);
     } catch (std::system_error &err) {
         std::cerr << err.what() << std::endl;
         return -1;

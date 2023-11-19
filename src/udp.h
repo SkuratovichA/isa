@@ -20,11 +20,7 @@ const size_t DNS_PACKET_SIZE = 512;
 
 namespace udp {
 
-    std::vector<uint8_t> sendQuery(const std::string &server, uint16_t port, const std::string &address, const std::vector<uint8_t> &queryPacket, int timeoutSec) {
-        debugMsg(
-            "Sending DNS query to " << server << ":" << port << " for " << address << std::endl
-        );
-
+    std::vector<uint8_t> sendQuery(const std::string &server, uint16_t port, const std::vector<uint8_t> &queryPacket, int timeoutSec) {
         addrinfo hints{}, *res;
         hints.ai_family = AF_UNSPEC;
         hints.ai_socktype = SOCK_DGRAM;
