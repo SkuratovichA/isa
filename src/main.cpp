@@ -1,3 +1,5 @@
+// Author: Aliaksandr Skuratovich (xskura01)
+
 #include "argparser.h"
 #include "dns.h"
 #include "udp.h"

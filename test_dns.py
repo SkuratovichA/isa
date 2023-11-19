@@ -1,3 +1,5 @@
+# Author: Aliaksandr Skuratovich (xskura01)
+
 import unittest
 import subprocess
 import socket

@@ -1,3 +1,5 @@
+// Author: Aliaksandr Skuratovich (xskura01)
+
 #pragma once
 
 #include <string>

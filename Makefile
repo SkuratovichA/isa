@@ -1,3 +1,5 @@
+# Author: Aliaksandr Skuratovich (xskura01)
+
 CC = g++
 CXXFLAGS = -std=c++20 -Wall
 DEBUGFLAGS = -DDEBUG -g
