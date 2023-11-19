@@ -319,7 +319,7 @@ namespace dns {
                     response,
                     offset,
                     [](const uint16_t type, const std::vector<uint8_t> &resp, size_t offs, uint16_t rdlen) {
-                        return std::tuple(std::string("[Additional Data]"), offs);
+                        return std::tuple(std::string("[Additional Data]"), offs + rdlen);
                     }
             );
         }
