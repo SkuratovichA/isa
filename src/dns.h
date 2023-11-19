@@ -384,7 +384,7 @@ namespace dns {
         }
     }
 
-    std::tuple<std::vector<uint8_t>, Server> constructQueryPacket(const DNSConfiguration &args) {
+    std::vector<uint8_t> constructQueryPacket(const DNSConfiguration &args, Server &server) {
         std::vector<uint8_t> packet;
         std::string address = args.address;
 
@@ -421,13 +421,9 @@ namespace dns {
         packet.push_back(CLASS_IN >> 8);
         packet.push_back(CLASS_IN & 0xFF);
 
-        return std::make_tuple(
-                packet,
-                (Server) {
-                        .port = args.port.value_or(DEFAULT_DNS_PORT),
-                        .address = args.server,
-                }
-        );
+        server.port = args.port.value_or(DEFAULT_DNS_PORT);
+        server.address = args.server;
+        return packet;
     }
 
     std::string parseResponsePacket(const std::vector<uint8_t> &response) {

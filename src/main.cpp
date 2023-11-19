@@ -22,7 +22,7 @@ int main(int argc, const char** argv) {
     dns::Packet queryPacket;
     dns::Server server;
     try {
-        tie(queryPacket, server) = dns::constructQueryPacket(args);
+        queryPacket = dns::constructQueryPacket(args, server);
     } catch (const std::system_error &err) {
         std::cerr << err.what() << std::endl;
         return -1;
