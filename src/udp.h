@@ -33,7 +33,7 @@ namespace udp {
             hints.ai_flags = AI_NUMERICHOST;
         }
 
-        auto svaddr_status = getaddrinfo(server.c_str(), nullptr, &hints, &res);
+        auto svaddr_status = getaddrinfo(server.c_str(), std::to_string(port).c_str(), &hints, &res);
         if (svaddr_status != 0) {
             throw std::system_error(svaddr_status, std::generic_category(), gai_strerror(svaddr_status));
         }
