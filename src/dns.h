@@ -353,13 +353,7 @@ namespace dns {
         }
 
         parserResult parseAdditionalSection(const Packet &response, size_t offset) {
-            return parseCommonSection(
-                    response,
-                    offset,
-                    [](const uint16_t type, const Packet &resp, size_t offs, uint16_t rdlen) {
-                        return std::tuple(std::string("[Additional Data]"), offs + rdlen);
-                    }
-            );
+            return parseCommonSection(response, offset, parseTypeSpecificSection);
         }
     }
 
