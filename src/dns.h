@@ -331,35 +331,19 @@ namespace dns {
             offset += 4;
 
             // rdlength
+            uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2; // Skipping RDATA length
+
+
+            // parse type specific section
+            std::string typeSpecificOutput;
+            std::tie(typeSpecificOutput, offset) = parseTypeSpecificSection(type, response, offset, rdlength);
 
             output << name << ", ";
             output << utils::typeToString(type) << ", ";
             output << utils::classToString(ansclass) << ", ";
-            output << ttl;
-
-            switch (type) {
-                case TYPE_A: {
-                    std::string ipv4_str;
-                    std::tie(ipv4_str, offset) = parseARecord(response, offset);
-                    output << ", " << ipv4_str;
-                    break;
-                }
-                case TYPE_AAAA: {
-                    std::string ipv6_str;
-                    std::tie(ipv6_str, offset) = parseAAAARecord(response, offset);
-                    output << ", " << ipv6_str;
-                    break;
-                }
-                case TYPE_CNAME: {
-                    std::string cname;
-                    std::tie(cname, offset) = utils::parseDomainNameFromPacket(response, offset);
-                    output << ", " + cname;
-                    break;
-                }
-                default:
-                    break;
-            }
+            output << ttl << ", ";
+            output << typeSpecificOutput;
 
             return {output.str(), offset};
         }
