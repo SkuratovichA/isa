@@ -348,31 +348,29 @@ namespace dns {
 
         std::string reverseIPv4(const std::string &ip) {
             struct sockaddr_in sa{};
-            // validate
-            if (getIpAddrType(ip) != ADDR_TYPE_A) {
+
+            if (inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr)) != 1) {
                 throw std::system_error(EINVAL, std::system_category(), "Invalid IPv4 address");
             }
 
-            char buffer[sizeof("069.420.420.069" "in-addr.arpa") + 1];
-            snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d.in-addr.arpa",
-                     (sa.sin_addr.s_addr >> 24) & 0xFF,
-                     (sa.sin_addr.s_addr >> 16) & 0xFF,
-                     (sa.sin_addr.s_addr >> 8) & 0xFF,
-                     (sa.sin_addr.s_addr >> 0) & 0xFF
-            );
-            return {buffer};
+            std::stringstream buffer;
+            for (int i = 0; i < 4; i++) {
+                buffer << std::to_string((sa.sin_addr.s_addr >> (i * 8)) & 0xFF) << ".";
+            }
+            buffer << "in-addr.arpa";
+            return buffer.str();
         }
 
         std::string reverseIPv6(const std::string &ip) {
             struct sockaddr_in6 sa{};
             // validate
-            if (getIpAddrType(ip) != ADDR_TYPE_AAAA) {
+            if (inet_pton(AF_INET6, ip.c_str(), &(sa.sin6_addr)) != 1) {
                 throw std::system_error(EINVAL, std::system_category(), "Invalid IPv6 address");
             }
 
             const char *hexadec = "0123456789abcdef";
             std::string result;
-            for (int i = sizeof(hexadec) - 1; i >= 0; --i) {
+            for (int i = 15; i >= 0; --i) {
                 uint8_t byte = sa.sin6_addr.s6_addr[i];
                 result += hexadec[byte & 0x0F];
                 result += '.';
@@ -460,6 +458,7 @@ namespace dns {
         );
         output << sectionOutput;
 
+        // fixme: the error is maybe here in answer so I increase too much of offset at the end of the function
         debugMsg("PARSE ANSWER SECTION" << std::endl);
         output << "Answer section (" << header.ancount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
