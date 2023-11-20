@@ -301,12 +301,15 @@ namespace dns {
             const uint16_t rdlength = ntohs(*reinterpret_cast<const uint16_t *>(response.data() + offset));
             offset += 2;
 
+            std::cout << "333: offset: " << offset << "\n\n";
             std::string typeSpecificOutput;
-            std::tie(typeSpecificOutput, offset) = parseTypeSpecific(type, response, offset, rdlength);
+            size_t fake_offset;
+            std::tie(typeSpecificOutput, fake_offset) = parseTypeSpecific(type, response, offset, rdlength);
 
             output << name << ", " << utils::typeToString(type) << ", " << utils::classToString(authclass) << ", "
                    << ttl << ", " << typeSpecificOutput;
-            return {output.str(), offset};
+
+            return {output.str(), offset + rdlength};
         }
 
         parserResult parseAuthoritySection(const Packet &response, size_t offset) {
@@ -475,6 +478,7 @@ namespace dns {
         );
         output << sectionOutput;
 
+        std::cout << "offset: " << offset << "\n\n";
         debugMsg("PARSE ADDITIONAL SECTION" << std::endl);
         output << "Additional section (" << header.arcount << ")" << std::endl;
         std::tie(sectionOutput, offset) = parsing::parseSection(
