@@ -423,10 +423,10 @@ namespace dns {
 
         return {
             packet,
-            (Server) {
+            {
                 .port = args.port.value_or(DEFAULT_DNS_PORT),
                 .address = args.server,
-             }
+            }
         };
     }
 

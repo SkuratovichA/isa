@@ -1,7 +1,7 @@
 # Author: Aliaksandr Skuratovich (xskura01)
 
 CC = g++
-CXXFLAGS = -std=c++20 -Wall
+CXXFLAGS = -std=c++20 -Wall -Wpedantic
 DEBUGFLAGS = -DDEBUG -g
 LDFLAGS =
 EXEC = dns
